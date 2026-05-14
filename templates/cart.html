@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Your Bag - OutfitIQ</title>
-    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=7">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=8">
     <style>
         .cart-container { max-width: 800px; margin: 40px auto; padding: 20px; background: white; border-radius: 16px; box-shadow: 0 2px 15px rgba(0,0,0,0.08); }
         .cart-item { display: flex; align-items: center; gap: 20px; padding: 15px 0; border-bottom: 1px solid #eee; }
@@ -44,70 +44,101 @@
 
     <script>
         async function loadCart() {
-            const cartIds = JSON.parse(localStorage.getItem('cart')) || [];
+            const token = localStorage.getItem('access_token');
             const cartItemsContainer = document.getElementById('cartItems');
             const cartTotalEl = document.getElementById('cartTotal');
             const checkoutBtn = document.getElementById('checkoutBtn');
-            
-            if (cartIds.length === 0) {
-                cartItemsContainer.innerHTML = '<div class="empty-cart">Your bag is empty.</div>';
+
+            if (!token) {
+                cartItemsContainer.innerHTML = '<div class="empty-cart">Please login to view your bag.</div>';
                 cartTotalEl.style.display = 'none';
                 checkoutBtn.style.display = 'none';
                 return;
             }
 
             cartItemsContainer.innerHTML = 'Loading...';
-            let total = 0;
-            let itemsHtml = '';
 
-            // Fetch all products
             try {
-                const response = await fetch("http://127.0.0.1:8000/api/products/");
-                const data = await response.json();
-                const allProducts = data.results;
-
-                for (let i = 0; i < cartIds.length; i++) {
-                    const id = cartIds[i];
-                    const product = allProducts.find(p => p.id === id);
-                    if (product) {
-                        total += parseFloat(product.price);
-                        itemsHtml += `
-                            <div class="cart-item">
-                                <img src="${getImageUrl(product.image)}" alt="${product.title}">
-                                <div class="cart-item-info">
-                                    <div class="cart-item-title">${product.title}</div>
-                                    <div class="cart-item-price">₹${product.price}</div>
-                                </div>
-                                <button class="remove-btn" onclick="removeFromCart(${i})">Remove</button>
-                            </div>
-                        `;
+                const response = await fetch(`${API_BASE_URL}/api/cart/`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
                     }
+                });
+
+                if (response.status === 401) {
+                    localStorage.removeItem('access_token');
+                    window.location.href = '/login/';
+                    return;
                 }
-                
+
+                if (!response.ok) throw new Error("Failed to load bag");
+
+                const cartData = await response.json();
+                const items = cartData.items || [];
+
+                if (items.length === 0) {
+                    cartItemsContainer.innerHTML = '<div class="empty-cart">Your bag is empty.</div>';
+                    cartTotalEl.style.display = 'none';
+                    checkoutBtn.style.display = 'none';
+                    return;
+                }
+
+                let total = 0;
+                let itemsHtml = '';
+
+                items.forEach(item => {
+                    const product = item.product;
+                    total += parseFloat(product.price) * item.quantity;
+                    itemsHtml += `
+                        <div class="cart-item">
+                            <img src="${getImageUrl(product.image)}" alt="${product.title}">
+                            <div class="cart-item-info">
+                                <div class="cart-item-title">${product.title}</div>
+                                <div class="cart-item-price">₹${product.price} (x${item.quantity})</div>
+                            </div>
+                            <button class="remove-btn" onclick="removeFromCart(${product.id})">Remove</button>
+                        </div>
+                    `;
+                });
+
                 cartItemsContainer.innerHTML = itemsHtml;
-                cartTotalEl.innerText = `Total: ₹${total}`;
+                cartTotalEl.innerText = `Total: ₹${total.toFixed(2)}`;
                 cartTotalEl.style.display = 'block';
                 checkoutBtn.style.display = 'block';
-            } catch(e) {
-                cartItemsContainer.innerHTML = 'Error loading cart.';
+            } catch (e) {
+                cartItemsContainer.innerHTML = 'Error loading bag.';
             }
         }
 
-        function removeFromCart(index) {
-            let cartIds = JSON.parse(localStorage.getItem('cart')) || [];
-            cartIds.splice(index, 1);
-            localStorage.setItem('cart', JSON.stringify(cartIds));
-            loadCart();
+        async function removeFromCart(productId) {
+            const token = localStorage.getItem('access_token');
+            if (!token) return;
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/cart/?product_id=${productId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                if (response.ok) {
+                    loadCart();
+                } else {
+                    alert('Failed to remove item from bag.');
+                }
+            } catch (e) {
+                console.error("Error removing item", e);
+            }
         }
 
         function checkout() {
             alert('Checkout successful! Thanks for shopping.');
-            localStorage.removeItem('cart');
-            loadCart();
+            // In a real app, send a POST request to a checkout endpoint
         }
 
         loadCart();
     </script>
-    <script src="{% static 'js/app.js' %}?v=7"></script>
+    <script src="{% static 'js/app.js' %}?v=8"></script>
 </body>
 </html>

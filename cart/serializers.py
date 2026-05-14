@@ -4,12 +4,14 @@ from products.serializers import ProductSerializer
 
 class CartItemSerializer(serializers.ModelSerializer):
     product = ProductSerializer(read_only=True)
+
     class Meta:
         model = CartItem
-        fields = '__all__'
+        fields = ['id', 'product', 'quantity']
 
 class CartSerializer(serializers.ModelSerializer):
     items = CartItemSerializer(many=True, read_only=True)
+
     class Meta:
         model = Cart
-        fields = '__all__'
+        fields = ['id', 'user', 'created_at', 'items']

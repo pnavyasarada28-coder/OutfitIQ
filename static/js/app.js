@@ -122,13 +122,38 @@ function displayProducts(products) {
 
 /* ADD TO CART */
 
-function addToCart(productId) {
-    let cart = JSON.parse(localStorage.getItem('cart')) || [];
-    cart.push(productId);
-    localStorage.setItem('cart', JSON.stringify(cart));
-    alert(
-        `Product added to bag!`
-    );
+async function addToCart(productId) {
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+        alert('Please login to add items to your bag');
+        window.location.href = '/login/';
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/cart/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ product_id: productId })
+        });
+
+        if (response.ok) {
+            alert('Product added to bag!');
+        } else if (response.status === 401) {
+            alert('Session expired. Please login again.');
+            localStorage.removeItem('access_token');
+            window.location.href = '/login/';
+        } else {
+            const data = await response.json();
+            alert(data.error || 'Failed to add product to bag.');
+        }
+    } catch(err) {
+        console.error('Error adding to bag:', err);
+        alert('Network error. Could not add product.');
+    }
 }
 
 /* SEARCH */
