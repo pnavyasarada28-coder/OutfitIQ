@@ -1,0 +1,113 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Bag - OutfitIQ</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=7">
+    <style>
+        .cart-container { max-width: 800px; margin: 40px auto; padding: 20px; background: white; border-radius: 16px; box-shadow: 0 2px 15px rgba(0,0,0,0.08); }
+        .cart-item { display: flex; align-items: center; gap: 20px; padding: 15px 0; border-bottom: 1px solid #eee; }
+        .cart-item img { width: 80px; height: 80px; object-fit: cover; border-radius: 8px; }
+        .cart-item-info { flex: 1; }
+        .cart-item-title { font-weight: bold; font-size: 18px; margin-bottom: 5px; }
+        .cart-item-price { color: #ff3f6c; font-weight: bold; }
+        .remove-btn { color: #888; cursor: pointer; border: none; background: none; text-decoration: underline; }
+        .cart-total { text-align: right; font-size: 24px; font-weight: bold; margin-top: 20px; }
+        .checkout-btn { display: block; width: 100%; padding: 15px; background: #ff3f6c; color: white; border: none; border-radius: 8px; font-size: 18px; cursor: pointer; margin-top: 20px; }
+        .empty-cart { text-align: center; padding: 40px; color: #888; }
+    </style>
+</head>
+<body>
+    <!-- NAVBAR -->
+    <nav class="navbar">
+        <div class="logo">
+            <a href="/" style="text-decoration:none; color:inherit;">OutfitIQ</a>
+        </div>
+        <div class="nav-links">
+            <a href="/"><button>Home</button></a>
+            <a href="/login/"><button>Login</button></a>
+        </div>
+    </nav>
+
+    <div class="cart-container">
+        <h2>Your Bag</h2>
+        <div id="cartItems">
+            <!-- Populated by JS -->
+        </div>
+        <div class="cart-total" id="cartTotal" style="display:none;">
+            Total: ₹0
+        </div>
+        <button class="checkout-btn" id="checkoutBtn" style="display:none;" onclick="checkout()">Proceed to Checkout</button>
+    </div>
+
+    <script>
+        async function loadCart() {
+            const cartIds = JSON.parse(localStorage.getItem('cart')) || [];
+            const cartItemsContainer = document.getElementById('cartItems');
+            const cartTotalEl = document.getElementById('cartTotal');
+            const checkoutBtn = document.getElementById('checkoutBtn');
+            
+            if (cartIds.length === 0) {
+                cartItemsContainer.innerHTML = '<div class="empty-cart">Your bag is empty.</div>';
+                cartTotalEl.style.display = 'none';
+                checkoutBtn.style.display = 'none';
+                return;
+            }
+
+            cartItemsContainer.innerHTML = 'Loading...';
+            let total = 0;
+            let itemsHtml = '';
+
+            // Fetch all products
+            try {
+                const response = await fetch("http://127.0.0.1:8000/api/products/");
+                const data = await response.json();
+                const allProducts = data.results;
+
+                for (let i = 0; i < cartIds.length; i++) {
+                    const id = cartIds[i];
+                    const product = allProducts.find(p => p.id === id);
+                    if (product) {
+                        total += parseFloat(product.price);
+                        itemsHtml += `
+                            <div class="cart-item">
+                                <img src="${getImageUrl(product.image)}" alt="${product.title}">
+                                <div class="cart-item-info">
+                                    <div class="cart-item-title">${product.title}</div>
+                                    <div class="cart-item-price">₹${product.price}</div>
+                                </div>
+                                <button class="remove-btn" onclick="removeFromCart(${i})">Remove</button>
+                            </div>
+                        `;
+                    }
+                }
+                
+                cartItemsContainer.innerHTML = itemsHtml;
+                cartTotalEl.innerText = `Total: ₹${total}`;
+                cartTotalEl.style.display = 'block';
+                checkoutBtn.style.display = 'block';
+            } catch(e) {
+                cartItemsContainer.innerHTML = 'Error loading cart.';
+            }
+        }
+
+        function removeFromCart(index) {
+            let cartIds = JSON.parse(localStorage.getItem('cart')) || [];
+            cartIds.splice(index, 1);
+            localStorage.setItem('cart', JSON.stringify(cartIds));
+            loadCart();
+        }
+
+        function checkout() {
+            alert('Checkout successful! Thanks for shopping.');
+            localStorage.removeItem('cart');
+            loadCart();
+        }
+
+        loadCart();
+    </script>
+    <script src="{% static 'js/app.js' %}?v=7"></script>
+</body>
+</html>

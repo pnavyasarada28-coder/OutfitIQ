@@ -1,0 +1,149 @@
+{% load static %}
+
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+    <title>Product Detail</title>
+
+    <link
+        rel="stylesheet"
+        href="{% static 'css/style.css' %}?v=7"
+    >
+
+</head>
+
+<body>
+
+    <!-- NAVBAR -->
+    <nav class="navbar">
+        <div class="logo">
+            <a href="/" style="text-decoration:none; color:inherit;">OutfitIQ</a>
+        </div>
+        <div class="search-container">
+            <input type="text" id="searchInput" placeholder="Search fashion...">
+            <button id="searchBtn">Search</button>
+        </div>
+        <div class="nav-links">
+            <a href="/cart/"><button>Bag</button></a>
+            <a href="/login/"><button>Login</button></a>
+        </div>
+    </nav>
+
+    <div class="product-detail-container" id="productDetailContainer">
+        <!-- Populated by JS -->
+    </div>
+
+    <!-- RELATED PRODUCTS -->
+    <h2 class="section-title">Related Products</h2>
+    <section class="products-container" id="relatedProductsContainer">
+        <!-- Populated by JS -->
+    </section>
+
+    <!-- COMPLETE YOUR LOOK -->
+    <div id="completeLookContainer"></div>
+
+    <script src="{% static 'js/app.js' %}?v=7"></script>
+    <script>
+        const productId = Number("{{ product_id }}");
+        let currentProduct = null;
+        
+        async function fetchProductDetail() {
+            try {
+                const response = await fetch(`http://127.0.0.1:8000/api/products/${productId}/`);
+                currentProduct = await response.json();
+                
+                const container = document.getElementById("productDetailContainer");
+                container.innerHTML = `
+                    <div class="product-detail-image">
+                        <img src="${getImageUrl(currentProduct.image)}" alt="${currentProduct.title}">
+                    </div>
+                    <div class="product-detail-info">
+                        <h1 class="product-detail-title">${currentProduct.title}</h1>
+                        <div class="product-detail-price">₹${currentProduct.price}</div>
+                        <p class="product-detail-description">${currentProduct.description || 'Premium fashion item for modern styling.'}</p>
+                        <button class="add-cart-btn" onclick="addToCart(${currentProduct.id})">Add To Bag</button>
+                    </div>
+                `;
+                
+                fetchRecommendations();
+                fetchCompleteLook();
+            } catch (error) {
+                console.error("Error fetching product detail:", error);
+            }
+        }
+
+        async function fetchRecommendations() {
+            if (!currentProduct) return;
+            try {
+                const response = await fetch("http://127.0.0.1:8000/api/products/");
+                const data = await response.json();
+                
+                // Get 3 products excluding current one, matching gender
+                const recommendations = data.results.filter(p => 
+                    p.id !== productId && 
+                    p.gender === currentProduct.gender
+                ).slice(0, 3);
+                
+                const relatedContainer = document.getElementById("relatedProductsContainer");
+                relatedContainer.innerHTML = recommendations.map(product => `
+                    <div class="product-card">
+                        <img src="${getImageUrl(product.image)}" alt="${product.title}">
+                        <div class="product-info">
+                            <a href="/product/${product.id}/" style="text-decoration:none; color:inherit;">
+                                <div class="product-title">${product.title}</div>
+                            </a>
+                            <div class="product-price">₹${product.price}</div>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error("Error fetching recommendations:", error);
+            }
+        }
+
+        async function fetchCompleteLook() {
+            if (!currentProduct) return;
+            try {
+                const response = await fetch("http://127.0.0.1:8000/api/products/");
+                const data = await response.json();
+                
+                // Exclude current product's category to find complementary items of same gender
+                const complementary = data.results.filter(p => 
+                    p.id !== productId && 
+                    p.gender === currentProduct.gender &&
+                    p.category !== currentProduct.category
+                ).slice(0, 4);
+
+                if (complementary.length === 0) return;
+
+                const completeLookHtml = `
+                    <h2 class="section-title">Complete Your Look</h2>
+                    <p style="padding-left: 40px; color: #666; margin-bottom: 20px;">Mix and match with these curated pieces.</p>
+                    <section class="products-container" style="display: flex; gap: 20px; padding-top: 0;">
+                        ${complementary.map(product => `
+                            <div class="product-card" style="min-width: 220px; flex: 1;">
+                                <img src="${getImageUrl(product.image)}" style="height: 240px;" alt="${product.title}">
+                                <div class="product-info" style="padding: 15px;">
+                                    <div class="product-title" style="font-size: 16px;">${product.title}</div>
+                                    <div class="product-price" style="font-size: 16px;">₹${product.price}</div>
+                                    <button class="add-cart-btn" style="padding: 8px; margin-top: 10px;" onclick="addToCart(${product.id})">Add To Bag</button>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </section>
+                `;
+                
+                document.getElementById("completeLookContainer").innerHTML = completeLookHtml;
+            } catch (error) {
+                console.error("Error fetching complete look:", error);
+            }
+        }
+
+        fetchProductDetail();
+    </script>
+</body>
+
+</html>

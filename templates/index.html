@@ -1,0 +1,162 @@
+{% load static %}
+
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>OutfitIQ</title>
+
+    <link
+        rel="stylesheet"
+        href="{% static 'css/style.css' %}?v=7"
+    >
+
+</head>
+
+<body>
+
+    <!-- NAVBAR -->
+
+    <nav class="navbar">
+
+        <div class="logo">
+            <a href="/" style="text-decoration:none; color:inherit;">OutfitIQ</a>
+        </div>
+
+        <div class="search-container">
+
+            <input
+                type="text"
+                id="searchInput"
+                placeholder="Search fashion..."
+            >
+
+            <button id="searchBtn">
+
+                Search
+
+            </button>
+
+        </div>
+
+        <div class="nav-links">
+
+            <a href="/cart/">
+
+                <button>
+
+                    Bag
+
+                </button>
+
+            </a>
+
+            <a href="/login/">
+
+                <button>
+
+                    Login
+
+                </button>
+
+            </a>
+
+        </div>
+
+    </nav>
+
+    <!-- HERO -->
+
+    <section class="hero-section">
+
+        <h1>
+
+            Discover Your Style
+
+        </h1>
+
+        <p>
+
+            AI Powered Fashion Platform
+
+        </p>
+
+    </section>
+
+    <!-- PRODUCTS -->
+
+    <section
+        class="products-container"
+        id="productsContainer"
+    >
+
+    </section>
+
+    <!-- PAGINATION -->
+    <div id="paginationContainer" class="pagination-container"></div>
+
+    <!-- CHATBOT ICON -->
+
+    <div
+        class="chatbot-icon"
+        id="chatbotIcon"
+    >
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+        </svg>
+
+    </div>
+
+    <!-- CHATBOT -->
+
+    <div
+        class="chatbot-container"
+        id="chatbotContainer"
+    >
+
+        <div class="chat-header" style="display: flex; justify-content: space-between; align-items: center;">
+
+            <span>OutfitIQ Assistant</span>
+            <span id="closeChatBtn" style="cursor: pointer; font-size: 22px; line-height: 1;">&times;</span>
+
+        </div>
+
+        <div
+            class="chat-messages"
+            id="chatMessages"
+        >
+
+        </div>
+
+        <div class="chat-input-area">
+
+            <input
+                type="text"
+                id="chatInput"
+                placeholder="Ask fashion advice..."
+            >
+
+            <button id="sendBtn">
+
+                Send
+
+            </button>
+
+        </div>
+
+    </div>
+
+    <script src="{% static 'js/app.js' %}?v=7"></script>
+
+</body>
+
+</html>
