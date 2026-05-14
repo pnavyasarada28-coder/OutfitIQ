@@ -23,7 +23,21 @@ class ProductListCreateAPIView(APIView):
         products = Product.objects.all()
         search_query = request.query_params.get('search', None)
         if search_query:
-            products = products.filter(title__icontains=search_query)
+            from django.db.models import Q
+            search_lower = search_query.lower()
+            
+            # Base query for title and tags
+            q_objects = Q(title__icontains=search_query) | Q(tags__icontains=search_query)
+            
+            # Handle gender and category specifically to avoid 'men' matching 'woMEN'
+            if search_lower in ['men', 'mens', "men's"]:
+                q_objects |= Q(gender='men') | Q(category__name__iexact='men')
+            elif search_lower in ['women', 'womens', "women's"]:
+                q_objects |= Q(gender='women') | Q(category__name__iexact='women')
+            else:
+                q_objects |= Q(gender__icontains=search_query) | Q(category__name__icontains=search_query)
+                
+            products = products.filter(q_objects)
         page = int(request.query_params.get('page', 1))
         page_size = 8
         start = (page - 1) * page_size

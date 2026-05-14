@@ -42,6 +42,7 @@
         <button class="checkout-btn" id="checkoutBtn" style="display:none;" onclick="checkout()">Proceed to Checkout</button>
     </div>
 
+    <script src="{% static 'js/app.js' %}?v=9"></script>
     <script>
         async function loadCart() {
             const token = localStorage.getItem('access_token');
@@ -106,6 +107,7 @@
                 cartTotalEl.style.display = 'block';
                 checkoutBtn.style.display = 'block';
             } catch (e) {
+                console.error(e);
                 cartItemsContainer.innerHTML = 'Error loading bag.';
             }
         }
@@ -139,6 +141,5 @@
 
         loadCart();
     </script>
-    <script src="{% static 'js/app.js' %}?v=8"></script>
 </body>
 </html>
