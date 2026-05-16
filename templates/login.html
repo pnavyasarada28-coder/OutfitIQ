@@ -101,10 +101,13 @@
                     <input type="text" id="username" placeholder="Username" required>
                 </div>
                 <div class="input-group">
+                    <input type="email" id="email" placeholder="Email (only for new users)">
+                </div>
+                <div class="input-group">
                     <input type="password" id="password" placeholder="Password" required>
                 </div>
                 <div id="errorMessage" class="error-message">Invalid credentials. Please try again.</div>
-                <button type="submit" class="login-btn">CONTINUE</button>
+                <button type="submit" class="login-btn">Login / Sign In</button>
             </form>
             <a href="/" class="back-link">← Back to Store</a>
         </div>
@@ -115,15 +118,40 @@
         const loginForm = document.getElementById("loginForm");
         const errorMessage = document.getElementById("errorMessage");
 
+        async function handleLoginSuccess(data, username) {
+            localStorage.setItem("access_token", data.access);
+            localStorage.setItem("refresh_token", data.refresh);
+            
+            // Fetch user profile
+            try {
+                const profileResponse = await fetch(`${API_BASE_URL}/api/auth/profile/`, {
+                    headers: { "Authorization": `Bearer ${data.access}` }
+                });
+                
+                if (profileResponse.ok) {
+                    const profileData = await profileResponse.json();
+                    localStorage.setItem("username", profileData.username);
+                } else {
+                    // Fallback
+                    localStorage.setItem("username", username);
+                }
+            } catch (err) {
+                localStorage.setItem("username", username);
+            }
+            
+            window.location.href = "/";
+        }
+
         loginForm.addEventListener("submit", async (e) => {
             e.preventDefault();
             errorMessage.style.display = "none";
             const username = document.getElementById("username").value;
+            const email = document.getElementById("email").value || `${username}@example.com`;
             const password = document.getElementById("password").value;
             
             try {
-                // Fetch JWT Token
-                const response = await fetch(`${API_BASE_URL}/api/token/`, {
+                // Try Login first
+                let response = await fetch(`${API_BASE_URL}/api/token/`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ username, password })
@@ -131,28 +159,42 @@
                 
                 if (response.ok) {
                     const data = await response.json();
-                    localStorage.setItem("access_token", data.access);
-                    localStorage.setItem("refresh_token", data.refresh);
-                    
-                    // Fetch user profile
-                    const profileResponse = await fetch(`${API_BASE_URL}/api/auth/profile/`, {
-                        headers: { "Authorization": `Bearer ${data.access}` }
+                    await handleLoginSuccess(data, username);
+                } else {
+                    // If login fails, try to Register
+                    const regResponse = await fetch(`${API_BASE_URL}/api/auth/register/`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ username, email, password })
                     });
                     
-                    if (profileResponse.ok) {
-                        const profileData = await profileResponse.json();
-                        localStorage.setItem("username", profileData.username);
+                    if (regResponse.ok) {
+                        // Registration successful, login again
+                        response = await fetch(`${API_BASE_URL}/api/token/`, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ username, password })
+                        });
+                        if (response.ok) {
+                            const data = await response.json();
+                            await handleLoginSuccess(data, username);
+                        } else {
+                            errorMessage.innerText = "Registration succeeded but login failed.";
+                            errorMessage.style.display = "block";
+                        }
                     } else {
-                        // Fallback
-                        localStorage.setItem("username", username);
+                        // Registration failed (likely username exists and wrong password)
+                        const regData = await regResponse.json();
+                        if (regData.username) {
+                            errorMessage.innerText = "Invalid credentials. Please try again.";
+                        } else {
+                            errorMessage.innerText = "Registration failed: " + JSON.stringify(regData);
+                        }
+                        errorMessage.style.display = "block";
                     }
-                    
-                    window.location.href = "/";
-                } else {
-                    errorMessage.style.display = "block";
                 }
             } catch (err) {
-                console.error("Login error:", err);
+                console.error("Login/Register error:", err);
                 errorMessage.innerText = "Network error. Please try again.";
                 errorMessage.style.display = "block";
             }
