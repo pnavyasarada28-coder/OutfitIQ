@@ -38,6 +38,7 @@ urlpatterns = [
     path('api/products/', include('products.urls')),
     path('api/cart/', include('cart.urls')),
     path('api/orders/', include('orders.urls')),
+    path('orders/', include('orders.urls')),
     path('api/recommendations/', include('recommendations.urls')),
     path('api/chatbot/', include('chatbot.urls')),
     path('api/recently-viewed/', include('recently_viewed.urls')),
