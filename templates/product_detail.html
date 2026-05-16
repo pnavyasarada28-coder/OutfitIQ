@@ -28,6 +28,7 @@
         </div>
         <div class="nav-links">
             <a href="/cart/"><button>Bag</button></a>
+            <a href="/orders/"><button>Orders</button></a>
             <a href="/login/"><button>Login</button></a>
         </div>
     </nav>
@@ -44,15 +45,18 @@
 
     <!-- COMPLETE YOUR LOOK -->
     <div id="completeLookContainer"></div>
+    
+    <!-- RECENTLY VIEWED -->
+    <div id="recentlyViewedContainer"></div>
 
-    <script src="{% static 'js/app.js' %}?v=7"></script>
+    <script src="{% static 'js/app.js' %}?v=99"></script>
     <script>
         const productId = Number("{{ product_id }}");
         let currentProduct = null;
         
         async function fetchProductDetail() {
             try {
-                const response = await fetch(`http://127.0.0.1:8000/api/products/${productId}/`);
+                const response = await fetch(`${API_BASE_URL}/api/products/${productId}/`);
                 currentProduct = await response.json();
                 
                 const container = document.getElementById("productDetailContainer");
@@ -68,27 +72,26 @@
                     </div>
                 `;
                 
+                recordRecentlyViewed(productId, currentProduct);
                 fetchRecommendations();
                 fetchCompleteLook();
+                fetchRecentlyViewed();
             } catch (error) {
                 console.error("Error fetching product detail:", error);
             }
         }
 
         async function fetchRecommendations() {
-            if (!currentProduct) return;
             try {
-                const response = await fetch("http://127.0.0.1:8000/api/products/");
-                const data = await response.json();
-                
-                // Get 3 products excluding current one, matching gender
-                const recommendations = data.results.filter(p => 
-                    p.id !== productId && 
-                    p.gender === currentProduct.gender
-                ).slice(0, 3);
+                const response = await fetch(`${API_BASE_URL}/api/recommendations/similar/${productId}/`);
+                const recommendations = await response.json();
                 
                 const relatedContainer = document.getElementById("relatedProductsContainer");
-                relatedContainer.innerHTML = recommendations.map(product => `
+                if (!recommendations || recommendations.length === 0) {
+                    relatedContainer.innerHTML = "<p style='padding-left: 40px; color: #666;'>No related products found.</p>";
+                    return;
+                }
+                relatedContainer.innerHTML = recommendations.slice(0, 4).map(product => `
                     <div class="product-card">
                         <img src="${getImageUrl(product.image)}" alt="${product.title}">
                         <div class="product-info">
@@ -105,29 +108,24 @@
         }
 
         async function fetchCompleteLook() {
-            if (!currentProduct) return;
             try {
-                const response = await fetch("http://127.0.0.1:8000/api/products/");
+                const response = await fetch(`${API_BASE_URL}/api/recommendations/complete-look/${productId}/`);
                 const data = await response.json();
+                const complementary = data.complete_the_look || [];
                 
-                // Exclude current product's category to find complementary items of same gender
-                const complementary = data.results.filter(p => 
-                    p.id !== productId && 
-                    p.gender === currentProduct.gender &&
-                    p.category !== currentProduct.category
-                ).slice(0, 4);
-
-                if (complementary.length === 0) return;
+                if (!complementary || complementary.length === 0) return;
 
                 const completeLookHtml = `
                     <h2 class="section-title">Complete Your Look</h2>
                     <p style="padding-left: 40px; color: #666; margin-bottom: 20px;">Mix and match with these curated pieces.</p>
-                    <section class="products-container" style="display: flex; gap: 20px; padding-top: 0;">
+                    <section class="products-container" style="display: flex; gap: 20px; padding-top: 0; overflow-x: auto; padding-bottom: 20px;">
                         ${complementary.map(product => `
-                            <div class="product-card" style="min-width: 220px; flex: 1;">
-                                <img src="${getImageUrl(product.image)}" style="height: 240px;" alt="${product.title}">
+                            <div class="product-card" style="min-width: 220px; flex: 0 0 auto;">
+                                <img src="${getImageUrl(product.image)}" style="height: 240px; object-fit: cover;" alt="${product.title}">
                                 <div class="product-info" style="padding: 15px;">
-                                    <div class="product-title" style="font-size: 16px;">${product.title}</div>
+                                    <a href="/product/${product.id}/" style="text-decoration:none; color:inherit;">
+                                        <div class="product-title" style="font-size: 16px;">${product.title}</div>
+                                    </a>
                                     <div class="product-price" style="font-size: 16px;">₹${product.price}</div>
                                     <button class="add-cart-btn" style="padding: 8px; margin-top: 10px;" onclick="addToCart(${product.id})">Add To Bag</button>
                                 </div>
@@ -142,8 +140,73 @@
             }
         }
 
+        async function recordRecentlyViewed(id, product) {
+            const token = localStorage.getItem('access_token');
+            if (token) {
+                try {
+                    await fetch(`${API_BASE_URL}/api/recently-viewed/add/`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify({ product_id: id })
+                    });
+                } catch (e) {
+                    console.error("Failed to record recently viewed on backend", e);
+                }
+            } else {
+                let recent = JSON.parse(localStorage.getItem('recently_viewed')) || [];
+                recent = recent.filter(p => p.id !== id); 
+                recent.unshift(product); 
+                if (recent.length > 8) recent.pop(); 
+                localStorage.setItem('recently_viewed', JSON.stringify(recent));
+            }
+        }
+
+        async function fetchRecentlyViewed() {
+            const token = localStorage.getItem('access_token');
+            let recentProducts = [];
+
+            if (token) {
+                try {
+                    const response = await fetch(`${API_BASE_URL}/api/recently-viewed/`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    if (response.ok) {
+                        const data = await response.json();
+                        recentProducts = data.map(item => item.product).filter(p => p.id !== productId);
+                    }
+                } catch (e) {
+                    console.error("Error fetching recently viewed from backend", e);
+                }
+            } else {
+                recentProducts = JSON.parse(localStorage.getItem('recently_viewed')) || [];
+                recentProducts = recentProducts.filter(p => p.id !== productId);
+            }
+
+            if (recentProducts.length === 0) return;
+
+            const recentHtml = `
+                <h2 class="section-title">Recently Viewed</h2>
+                <section class="products-container" style="display: flex; gap: 20px; padding-top: 0; overflow-x: auto; padding-bottom: 20px;">
+                    ${recentProducts.slice(0, 5).map(product => `
+                        <div class="product-card" style="min-width: 200px; flex: 0 0 auto;">
+                            <img src="${getImageUrl(product.image)}" style="height: 200px; object-fit: cover;" alt="${product.title}">
+                            <div class="product-info" style="padding: 15px;">
+                                <a href="/product/${product.id}/" style="text-decoration:none; color:inherit;">
+                                    <div class="product-title" style="font-size: 14px;">${product.title}</div>
+                                </a>
+                                <div class="product-price" style="font-size: 14px;">₹${product.price}</div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </section>
+            `;
+            document.getElementById("recentlyViewedContainer").innerHTML = recentHtml;
+        }
+
         fetchProductDetail();
     </script>
 </body>
-
 </html>

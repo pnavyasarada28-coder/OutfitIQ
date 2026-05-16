@@ -20,10 +20,8 @@ class PlaceOrderAPIView(APIView):
         # Calculate total price
         for item in cart_items:
             total_price += (item.product.price * item.quantity)
-
         # Create Order
         order = Order.objects.create(user=request.user,total_price=total_price)
-
         # Create OrderItems
         for item in cart_items:
             OrderItem.objects.create(
@@ -53,3 +51,10 @@ class OrderDetailAPIView(APIView):
             return Response({'error': 'Order not found'},status=status.HTTP_404_NOT_FOUND)
         serializer = OrderSerializer(order)
         return Response(serializer.data)
+        
+    def delete(self, request, order_id):
+        order = Order.objects.filter(id=order_id,user=request.user).first()
+        if not order:
+            return Response({'error': 'Order not found'},status=status.HTTP_404_NOT_FOUND)
+        order.delete()
+        return Response({'message': 'Order cancelled successfully'}, status=status.HTTP_204_NO_CONTENT)

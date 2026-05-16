@@ -26,7 +26,7 @@ from products.views import home,login_page,cart_page,product_detail_page,Product
 
 urlpatterns = [
     path('api/token/',TokenObtainPairView.as_view(),name='token_obtain_pair'),
-    path('refresh/',TokenRefreshView.as_view(),name='token_refresh'),
+    path('api/token/refresh/',TokenRefreshView.as_view(),name='token_refresh'),
     path('admin/', admin.site.urls),  
     path('', home),
     path('login/',login_page),

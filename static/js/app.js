@@ -357,12 +357,14 @@ function updateNavbarAuth() {
     if (username) {
         navLinks.innerHTML = `
             <a href="/cart/"><button style="padding: 10px 20px; border: none; border-radius: 8px; background: #ff3f6c; color: white; cursor: pointer; margin-right: 10px;">Bag</button></a>
+            <a href="/orders/"><button style="padding: 10px 20px; border: none; border-radius: 8px; background: #ff3f6c; color: white; cursor: pointer; margin-right: 10px;">Orders</button></a>
             <span style="font-weight: bold; margin-right: 15px; color: #333;">Welcome, ${username}</span>
             <button onclick="logout()" style="padding: 10px 20px; border: 1px solid #ff3f6c; border-radius: 8px; background: white; color: #ff3f6c; cursor: pointer;">Logout</button>
         `;
     } else {
         navLinks.innerHTML = `
             <a href="/cart/"><button style="padding: 10px 20px; border: none; border-radius: 8px; background: #ff3f6c; color: white; cursor: pointer; margin-right: 10px;">Bag</button></a>
+            <a href="/orders/"><button style="padding: 10px 20px; border: none; border-radius: 8px; background: #ff3f6c; color: white; cursor: pointer; margin-right: 10px;">Orders</button></a>
             <a href="/login/"><button style="padding: 10px 20px; border: none; border-radius: 8px; background: #ff3f6c; color: white; cursor: pointer;">Login</button></a>
         `;
     }

@@ -4,6 +4,7 @@ from rest_framework import status
 from .models import Product
 from .serializers import ProductSerializer
 from django.shortcuts import render
+from django.db.models import Q
 
 def home(request):
     return render(request,'index.html')
@@ -18,17 +19,17 @@ def product_detail_page(request,product_id):
     context = {"product_id": product_id}
     return render(request,'product_detail.html',context)
 
+def orders_page(request):
+    return render(request, 'orders.html')
+
 class ProductListCreateAPIView(APIView):
     def get(self, request):
         products = Product.objects.all()
         search_query = request.query_params.get('search', None)
         if search_query:
-            from django.db.models import Q
             search_lower = search_query.lower()
-            
             # Base query for title and tags
             q_objects = Q(title__icontains=search_query) | Q(tags__icontains=search_query)
-            
             # Handle gender and category specifically to avoid 'men' matching 'woMEN'
             if search_lower in ['men', 'mens', "men's"]:
                 q_objects |= Q(gender='men') | Q(category__name__iexact='men')

@@ -1,0 +1,189 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Orders - OutfitIQ</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=8">
+    <style>
+        .orders-container { max-width: 900px; margin: 40px auto; padding: 20px; }
+        .page-title { font-size: 28px; font-weight: bold; margin-bottom: 30px; color: #333; }
+        .order-card { background: white; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 24px; overflow: hidden; border: 1px solid #eaeaea; }
+        .order-header { background: #f9f9f9; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eaeaea; }
+        .order-header-left { display: flex; gap: 30px; }
+        .order-meta-label { font-size: 12px; color: #777; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+        .order-meta-value { font-size: 14px; font-weight: bold; color: #333; }
+        .order-status { padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; text-transform: uppercase; }
+        .status-pending { background: #fff0d4; color: #d97706; }
+        .status-packed { background: #e0f2fe; color: #0284c7; }
+        .status-shipped { background: #dbeafe; color: #1d4ed8; }
+        .status-delivered { background: #dcfce7; color: #166534; }
+        .order-items { padding: 20px; }
+        .order-item { display: flex; gap: 20px; align-items: center; padding: 15px 0; border-bottom: 1px solid #f0f0f0; }
+        .order-item:last-child { border-bottom: none; padding-bottom: 0; }
+        .order-item img { width: 80px; height: 100px; object-fit: cover; border-radius: 8px; }
+        .order-item-info { flex: 1; }
+        .order-item-title { font-weight: bold; font-size: 16px; margin-bottom: 5px; color: #333; }
+        .order-item-meta { font-size: 14px; color: #666; }
+        .order-item-price { font-weight: bold; color: #ff3f6c; font-size: 16px; }
+        .empty-orders { text-align: center; padding: 60px 20px; background: white; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .empty-orders h3 { font-size: 20px; color: #333; margin-bottom: 15px; }
+        .empty-orders p { color: #666; margin-bottom: 20px; }
+        .shop-now-btn { display: inline-block; padding: 12px 24px; background: #ff3f6c; color: white; text-decoration: none; border-radius: 6px; font-weight: bold; }
+        .cancel-btn { padding: 6px 12px; background: white; color: #ff3f6c; border: 1px solid #ff3f6c; border-radius: 6px; font-size: 12px; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        .cancel-btn:hover { background: #fff0f3; }
+    </style>
+</head>
+<body>
+    <!-- NAVBAR -->
+    <nav class="navbar">
+        <div class="logo">
+            <a href="/" style="text-decoration:none; color:inherit;">OutfitIQ</a>
+        </div>
+        <div class="nav-links">
+            <a href="/cart/"><button>Bag</button></a>
+            <a href="/orders/"><button>Orders</button></a>
+            <a href="/login/"><button>Login</button></a>
+        </div>
+    </nav>
+
+    <div class="orders-container">
+        <h1 class="page-title">Order History</h1>
+        <div id="ordersList">
+            <!-- Populated by JS -->
+        </div>
+    </div>
+
+    <script src="{% static 'js/app.js' %}?v=99"></script>
+    <script>
+        function formatDate(dateString) {
+            const options = { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+            return new Date(dateString).toLocaleDateString('en-US', options);
+        }
+
+        async function loadOrders() {
+            const token = localStorage.getItem('access_token');
+            const ordersListContainer = document.getElementById('ordersList');
+
+            if (!token) {
+                ordersListContainer.innerHTML = `
+                    <div class="empty-orders">
+                        <h3>Please login to view your orders</h3>
+                        <a href="/login/" class="shop-now-btn">Login Now</a>
+                    </div>`;
+                return;
+            }
+
+            ordersListContainer.innerHTML = '<div style="text-align:center; padding: 40px; color:#666;">Loading your orders...</div>';
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/orders/`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.status === 401) {
+                    localStorage.removeItem('access_token');
+                    window.location.href = '/login/';
+                    return;
+                }
+
+                if (!response.ok) throw new Error("Failed to load orders");
+
+                const orders = await response.json();
+
+                if (orders.length === 0) {
+                    ordersListContainer.innerHTML = `
+                        <div class="empty-orders">
+                            <h3>No Orders Found</h3>
+                            <p>Looks like you haven't placed any orders yet.</p>
+                            <a href="/" class="shop-now-btn">Start Shopping</a>
+                        </div>`;
+                    return;
+                }
+
+                let ordersHtml = '';
+
+                orders.forEach(order => {
+                    let itemsHtml = '';
+                    order.items.forEach(item => {
+                        const product = item.product;
+                        itemsHtml += `
+                            <div class="order-item">
+                                <img src="${getImageUrl(product.image)}" alt="${product.title}">
+                                <div class="order-item-info">
+                                    <div class="order-item-title">${product.title}</div>
+                                    <div class="order-item-meta">Qty: ${item.quantity}</div>
+                                </div>
+                                <div class="order-item-price">₹${item.price}</div>
+                            </div>
+                        `;
+                    });
+
+                    ordersHtml += `
+                        <div class="order-card">
+                            <div class="order-header">
+                                <div class="order-header-left">
+                                    <div>
+                                        <div class="order-meta-label">Order Placed</div>
+                                        <div class="order-meta-value">${formatDate(order.created_at)}</div>
+                                    </div>
+                                    <div>
+                                        <div class="order-meta-label">Total</div>
+                                        <div class="order-meta-value">₹${order.total_price}</div>
+                                    </div>
+                                    <div>
+                                        <div class="order-meta-label">Order #</div>
+                                        <div class="order-meta-value">${order.id}</div>
+                                    </div>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 15px;">
+                                    <span class="order-status status-${order.status.toLowerCase()}">${order.status}</span>
+                                    <button class="cancel-btn" onclick="cancelOrder(${order.id})">Cancel</button>
+                                </div>
+                            </div>
+                            <div class="order-items">
+                                ${itemsHtml}
+                            </div>
+                        </div>
+                    `;
+                });
+
+                ordersListContainer.innerHTML = ordersHtml;
+            } catch (e) {
+                console.error(e);
+                ordersListContainer.innerHTML = '<div class="empty-orders"><h3>Error loading orders.</h3><p>Please try again later.</p></div>';
+            }
+        }
+
+        async function cancelOrder(orderId) {
+            if (!confirm('Are you sure you want to cancel this order?')) return;
+            
+            const token = localStorage.getItem('access_token');
+            if (!token) return;
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/orders/${orderId}/`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.ok) {
+                    loadOrders(); // Refresh the list
+                } else {
+                    alert('Failed to cancel order.');
+                }
+            } catch (e) {
+                console.error("Error cancelling order", e);
+                alert('Network error. Could not cancel order.');
+            }
+        }
+
+        loadOrders();
+    </script>
+</body>
+</html>

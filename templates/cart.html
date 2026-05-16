@@ -26,7 +26,8 @@
             <a href="/" style="text-decoration:none; color:inherit;">OutfitIQ</a>
         </div>
         <div class="nav-links">
-            <a href="/"><button>Home</button></a>
+            <a href="/cart/"><button>Bag</button></a>
+            <a href="/orders/"><button>Orders</button></a>
             <a href="/login/"><button>Login</button></a>
         </div>
     </nav>
@@ -39,10 +40,10 @@
         <div class="cart-total" id="cartTotal" style="display:none;">
             Total: ₹0
         </div>
-        <button class="checkout-btn" id="checkoutBtn" style="display:none;" onclick="checkout()">Proceed to Checkout</button>
+        <button class="checkout-btn" id="checkoutBtn" style="display:none;" onclick="checkout()">Order</button>
     </div>
 
-    <script src="{% static 'js/app.js' %}?v=9"></script>
+    <script src="{% static 'js/app.js' %}?v=99"></script>
     <script>
         async function loadCart() {
             const token = localStorage.getItem('access_token');
@@ -134,9 +135,29 @@
             }
         }
 
-        function checkout() {
-            alert('Checkout successful! Thanks for shopping.');
-            // In a real app, send a POST request to a checkout endpoint
+        async function checkout() {
+            const token = localStorage.getItem('access_token');
+            if (!token) return;
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/orders/place/`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (response.ok) {
+                    window.location.href = '/orders/';
+                } else {
+                    const data = await response.json();
+                    alert(data.error || 'Failed to place order.');
+                }
+            } catch (e) {
+                console.error("Error placing order", e);
+                alert('Network error. Could not place order.');
+            }
         }
 
         loadCart();
